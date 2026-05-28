@@ -5,21 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#6366f1">
   <title>Censo de Mascotas — Nuevo Censo</title>
-  <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="manifest" href="../manifest.json">
+  <link rel="stylesheet" href="../css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
   <div id="offline-bar"><i class="fa-solid fa-wifi-slash"></i> Sin conexión — Censo se guardará localmente</div>
 
   <nav class="navbar">
-    <a href="/pages/mapa.html" class="navbar-brand"><i class="fa-solid fa-paw"></i> <span>Censo</span>Mascotas</a>
+    <a href="mapa.html" class="navbar-brand"><i class="fa-solid fa-paw"></i> <span>Censo</span>Mascotas</a>
     <ul class="navbar-nav">
-      <li><a href="/pages/personas.html" class="nav-link">Personas</a></li>
-      <li><a href="/pages/duenos.html" class="nav-link">Dueños</a></li>
-      <li><a href="/pages/mascotas.html" class="nav-link">Mascotas</a></li>
-      <li><a href="/pages/censo.html"    class="nav-link active">Censo</a></li>
-      <li><a href="/pages/mapa.html"     class="nav-link">Mapa</a></li>
+      <li><a href="personas.html" class="nav-link">Personas</a></li>
+      <li><a href="duenos.html" class="nav-link">Dueños</a></li>
+      <li><a href="mascotas.html" class="nav-link">Mascotas</a></li>
+      <li><a href="censo.html"    class="nav-link active">Censo</a></li>
+      <li><a href="mapa.html"     class="nav-link">Mapa</a></li>
     </ul>
     <span class="nav-user" id="nav-user-name"></span>
   </nav>
@@ -67,7 +67,10 @@
         </h3>
         <div class="form-group">
           <label for="foto-censo">Capturar o adjuntar foto</label>
-          <input type="file" id="foto-censo" accept="image/*" capture="environment">
+          <div style="display:flex;gap:0.5rem;align-items:center">
+            <input type="file" id="foto-censo" accept="image/*" capture="environment">
+            <button type="button" id="btn-tomar-foto" class="btn btn-secondary">Tomar foto</button>
+          </div>
           <img id="foto-preview" class="foto-preview" alt="Vista previa">
           <span class="foto-info" id="foto-info">Se comprimirá automáticamente a ≤ 50 KB</span>
         </div>
@@ -104,18 +107,19 @@
     </div>
   </div>
 
-  <script src="/js/auth.js"></script>
-  <script src="/js/api.js"></script>
-  <script src="/js/geo.js"></script>
-  <script src="/js/camera.js"></script>
-  <script src="/js/sync.js"></script>
+  <script src="../js/auth.js?v=3"></script>
+  <script src="../js/api.js?v=3"></script>
+  <script src="../js/geo.js?v=3"></script>
+  <script src="../js/camera.js?v=3"></script>
+  <script src="../js/sync.js?v=3"></script>
   <script>
     requiereAuth();
     if (!esAdmin()) {
-      window.location.href = '/pages/mapa.html';
+      window.location.href = 'mapa.html';
     }
     mostrarUsuarioNavbar();
     inicializarMonitorRed();
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(console.error);
     inicializarCampoFoto('foto-censo', 'foto-preview', 'foto-info');
 
     // Mostrar config del proyecto
@@ -215,8 +219,54 @@
         actualizarBadgePendientes();
       }
 
-      btn.disabled = false;
-      btn.textContent = 'Registrar censo';
+    });
+
+    // Handler para "Tomar foto": abrir cámara en un modal simple
+    document.getElementById('btn-tomar-foto').addEventListener('click', async () => {
+      // Crear elementos temporales
+      const modal = document.createElement('div');
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-content">
+          <video id="cam-video" autoplay playsinline style="width:100%;height:auto;border-radius:6px"></video>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button id="cam-capture" class="btn btn-primary">Capturar</button>
+            <button id="cam-close" class="btn btn-secondary">Cerrar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+
+      const video = document.getElementById('cam-video');
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+      video.srcObject = stream;
+
+      document.getElementById('cam-capture').addEventListener('click', async () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', 0.9));
+        try {
+          const resultado = await comprimirImagen(blob);
+          const input = document.getElementById('foto-censo');
+          input.dataset.base64 = resultado.base64;
+          const preview = document.getElementById('foto-preview');
+          preview.src = resultado.base64;
+          preview.classList.add('visible');
+          document.getElementById('foto-info').textContent = `OK ${formatearBytes(resultado.bytes)} — Calidad: ${resultado.quality}%`;
+        } catch (err) {
+          mostrarAlerta(err.message, 'danger');
+        }
+        // detener cámara y cerrar modal
+        stream.getTracks().forEach(t => t.stop());
+        modal.remove();
+      });
+
+      document.getElementById('cam-close').addEventListener('click', () => {
+        stream.getTracks().forEach(t => t.stop());
+        modal.remove();
+      });
     });
   </script>
 </body>

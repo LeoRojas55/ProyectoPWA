@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#6366f1">
   <title>Censo de Mascotas — Iniciar Sesión</title>
-  <link rel="manifest" href="/manifest.json">
-  <link rel="stylesheet" href="./css/styles.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
 <body>
@@ -47,22 +47,22 @@
 
         <p style="font-size:0.8rem;color:var(--text-muted);text-align:center">
           ¿No tienes cuenta?
-          <a href="/pages/registro.html" style="color:var(--accent)">Regístrate aquí</a>
+          <a href="pages/registro.html" style="color:var(--accent)">Regístrate aquí</a>
         </p>
       </div>
     </div>
   </div>
 
-  <script src="/js/auth.js"></script>
-  <script src="/js/sync.js"></script>
+  <script src="js/auth.js?v=3"></script>
+  <script src="js/sync.js?v=3"></script>
   <script>
     // Si ya tiene sesión, redirigir al mapa
-    if (tokenValido()) window.location.href = '/pages/mapa.html';
+    if (tokenValido()) window.location.href = 'pages/mapa.html';
 
     // Registrar Service Worker
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js')
-        .then(() => console.log(' Service Worker registrado'))
+      navigator.serviceWorker.register('sw.js')
+        .then(() => console.log('Service Worker registrado'))
         .catch(err => console.error('SW error:', err));
     }
 
@@ -81,9 +81,9 @@
         );
         const usuario = obtenerUsuario();
         if (usuario && usuario.rol === 'ADMIN') {
-          window.location.href = '/pages/mapa.html';
+          window.location.href = 'pages/mapa.html';
         } else {
-          window.location.href = '/pages/mapa.html'; // Dueños también van al mapa
+          window.location.href = 'pages/mapa.html'; // Dueños también van al mapa
         }
       } catch (err) {
         mostrarAlerta(err.message, 'danger');

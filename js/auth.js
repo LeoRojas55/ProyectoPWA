@@ -29,10 +29,14 @@ function obtenerUsuario() {
   return { ...usuario, rol: 'ADMIN' };
 }
 
+function getIndexPath() {
+  return location.pathname.includes('/pages/') ? '../index.html' : './index.html';
+}
+
 function cerrarSesion() {
   localStorage.removeItem(AUTH_KEY);
   localStorage.removeItem(USER_KEY);
-  window.location.href = '/index.html';
+  window.location.href = getIndexPath();
 }
 
 // ── Verificar si el token es válido (no expirado) ───────────────────────────
@@ -50,7 +54,7 @@ function tokenValido() {
 // ── Proteger páginas: redirigir si no hay sesión ─────────────────────────────
 function requiereAuth() {
   if (!tokenValido()) {
-    window.location.href = '/index.html';
+    window.location.href = getIndexPath();
   }
 }
 
@@ -68,7 +72,10 @@ function mostrarUsuarioNavbar() {
 function ajustarMenuPorRol(usuario) {
   if (!usuario || usuario.rol !== 'ADMIN') {
     // Ocultar enlaces no permitidos para dueños
-    const enlacesNoPermitidos = ['/pages/personas.html', '/pages/duenos.html', '/pages/mascotas.html', '/pages/censo.html'];
+    const enlacesNoPermitidos = [
+      'personas.html', 'duenos.html', 'mascotas.html', 'censo.html',
+      '/pages/personas.html', '/pages/duenos.html', '/pages/mascotas.html', '/pages/censo.html'
+    ];
     enlacesNoPermitidos.forEach(href => {
       const link = document.querySelector(`a[href="${href}"]`);
       if (link) {
@@ -85,11 +92,11 @@ function esAdmin() {
   return u && u.rol && u.rol.toString().toUpperCase() === 'ADMIN';
 }
 
-const DEFAULT_API_BASE = 'https://elprofehugo.online/api/v1';
-
+if (!window.DEFAULT_API_BASE) {
+  window.DEFAULT_API_BASE = 'https://elprofehugo.online/api/v1';
+}
 function getApiBase() {
-  const apiBase = window.__API_BASE__ || DEFAULT_API_BASE;
-  return apiBase.replace(/\/$/, '');
+  return (window.__API_BASE__ || window.DEFAULT_API_BASE).replace(/\/$/, '');
 }
 
 // ── Login ─────────────────────────────────────────────────────────────────────

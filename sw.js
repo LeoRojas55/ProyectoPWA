@@ -1,22 +1,22 @@
-const CACHE_NAME    = 'censo-mascotas-v1';
+const CACHE_NAME    = 'censo-mascotas-v2';
 const OFFLINE_QUEUE = 'offline-queue';
 
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/css/styles.css',
-  '/js/auth.js',
-  '/js/api.js',
-  '/js/geo.js',
-  '/js/camera.js',
-  '/js/sync.js',
-  '/pages/personas.html',
-  '/pages/duenos.html',
-  '/pages/mascotas.html',
-  '/pages/censo.html',
-  '/pages/mapa.html',
-  '/pages/registro.html',
+  './',
+  './index.html',
+  './manifest.json',
+  './css/styles.css',
+  './js/auth.js',
+  './js/api.js',
+  './js/geo.js',
+  './js/camera.js',
+  './js/sync.js',
+  './pages/personas.html',
+  './pages/duenos.html',
+  './pages/mascotas.html',
+  './pages/censo.html',
+  './pages/mapa.html',
+  './pages/registro.html',
 ];
 
 // ── INSTALL: pre-cachear assets estáticos ───────────────────────────────────
@@ -45,8 +45,14 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Scripts JS siempre por red para evitar caché de versiones viejas
+  if (url.pathname.endsWith('.js')) {
+    event.respondWith(fetch(event.request.clone()));
+    return;
+  }
+
   // Peticiones a la API: intentar red, si falla retornar error offline
-  if (url.pathname.startsWith('/api/')) {
+  if (url.pathname.includes('/api/')) {
     event.respondWith(
       fetch(event.request.clone()).catch(() => {
         return new Response(
@@ -68,7 +74,7 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
         }
         return response;
-      }).catch(() => caches.match('/index.html'));
+      }).catch(() => caches.match('./index.html'));
     })
   );
 });
@@ -89,10 +95,10 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(notif.title || 'Censo de Mascotas', {
       body:    notif.body   || 'Se registró un nuevo censo',
-      icon:    notif.icon   || '/assets/icons/icon-192x192.png',
-      badge:   notif.badge  || '/assets/icons/icon-72x72.png',
+      icon:    notif.icon   || 'assets/icons/icon-192x192.svg',
+      badge:   notif.badge  || 'assets/icons/icon-72x72.svg',
       vibrate: [200, 100, 200],
-      data:    notif.data   || { url: '/pages/mapa.html' },
+      data:    notif.data   || { url: 'pages/censo.html' },
       actions: [
         { action: 'ver-mapa', title: 'Ver en mapa' },
         { action: 'cerrar',   title: 'Cerrar' },
@@ -107,7 +113,8 @@ self.addEventListener('notificationclick', (event) => {
 
   if (event.action === 'cerrar') return;
 
-  const url = event.notification.data?.url || '/pages/mapa.html';
+  const notificationUrl = event.notification.data?.url || 'pages/censo.html';
+  const url = new URL(notificationUrl, self.registration.scope).href;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

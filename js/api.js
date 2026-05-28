@@ -1,19 +1,23 @@
 // ── api.js — Cliente para la API REST ──────────────────────────────────────
 
-if (window.__API_LOADED__) {
-  console.warn('api.js ya cargado — evitando ejecución duplicada');
-} else {
+if (!window.DEFAULT_API_BASE) {
+  window.DEFAULT_API_BASE = 'https://elprofehugo.online/api/v1';
+}
+if (!window.CACHE_STORES) {
+  window.CACHE_STORES = {
+    PERSONAS: 'personas_cache',
+    MASCOTAS: 'mascotas_cache',
+    CENSOS:   'censos_cache',
+  };
+}
+
+if (!window.__API_LOADED__) {
   window.__API_LOADED__ = true;
-
-  const DEFAULT_API_BASE = 'https://elprofehugo.online/api/v1';
-
-  // API_BASE se puede inyectar desde `window.__API_BASE__` (index.html).
-  // Por defecto usamos el endpoint remoto y evitamos depender de localStorage
-  // para prevenir valores obsoletos que rompan la conexión.
-  window.API_BASE = window.__API_BASE__ || DEFAULT_API_BASE;
-  // Normalizar: quitar slash final si existe
+  window.API_BASE = window.__API_BASE__ || window.DEFAULT_API_BASE;
   window.API_BASE = window.API_BASE.replace(/\/$/, '');
 }
+
+const CACHE_STORES = window.CACHE_STORES;
 
 // ── Función base de fetch con JWT ────────────────────────────────────────────
 async function apiFetch(endpoint, options = {}) {
@@ -75,7 +79,22 @@ async function crearPersona(datos) {
 }
 
 async function obtenerPersonas(rol = '') {
-  return apiFetch(`/personas${rol ? `?rol=${encodeURIComponent(rol)}` : ''}`);
+  const endpoint = `/personas${rol ? `?rol=${encodeURIComponent(rol)}` : ''}`;
+  try {
+    const personas = await apiFetch(endpoint);
+    if (typeof guardarCache === 'function') {
+      guardarCache(CACHE_STORES.PERSONAS, Array.isArray(personas) ? personas : []);
+    }
+    return personas;
+  } catch (err) {
+    console.warn('[API] obtenerPersonas fallback offline:', err.message);
+    if (typeof leerCache === 'function') {
+      const cache = await leerCache(CACHE_STORES.PERSONAS);
+      const pendientes = await leerPendientes(STORES.PERSONAS).catch(() => []);
+      return [...cache, ...pendientes];
+    }
+    throw err;
+  }
 }
 
 // ═══ MASCOTAS ════════════════════════════════════════════════════════════════
@@ -94,7 +113,21 @@ async function crearMascota(datos) {
 }
 
 async function obtenerMascotas() {
-  return apiFetch('/mascotas');
+  try {
+    const mascotas = await apiFetch('/mascotas');
+    if (typeof guardarCache === 'function') {
+      guardarCache(CACHE_STORES.MASCOTAS, Array.isArray(mascotas) ? mascotas : []);
+    }
+    return mascotas;
+  } catch (err) {
+    console.warn('[API] obtenerMascotas fallback offline:', err.message);
+    if (typeof leerCache === 'function') {
+      const cache = await leerCache(CACHE_STORES.MASCOTAS);
+      const pendientes = await leerPendientes(STORES.MASCOTAS).catch(() => []);
+      return [...cache, ...pendientes];
+    }
+    throw err;
+  }
 }
 
 // ═══ CENSOS ══════════════════════════════════════════════════════════════════
@@ -113,7 +146,21 @@ async function crearCenso(datos) {
 }
 
 async function obtenerCensos() {
-  return apiFetch('/censos');
+  try {
+    const censos = await apiFetch('/censos');
+    if (typeof guardarCache === 'function') {
+      guardarCache(CACHE_STORES.CENSOS, Array.isArray(censos) ? censos : []);
+    }
+    return censos;
+  } catch (err) {
+    console.warn('[API] obtenerCensos fallback offline:', err.message);
+    if (typeof leerCache === 'function') {
+      const cache = await leerCache(CACHE_STORES.CENSOS);
+      const pendientes = await leerPendientes(STORES.CENSOS).catch(() => []);
+      return [...cache, ...pendientes];
+    }
+    throw err;
+  }
 }
 
 // ═══ PUSH NOTIFICATIONS ══════════════════════════════════════════════════════
