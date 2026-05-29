@@ -107,15 +107,18 @@
         <div style="margin-top:0.75rem;text-align:center">
           <span id="badge-pendientes" class="badge badge-offline" style="display:none"></span>
         </div>
+        <!-- Botón de notificaciones push -->
+        <div id="notif-btn-container" style="margin-top:0.5rem"></div>
       </form>
     </div>
   </div>
 
   <script src="../js/auth.js?v=3"></script>
-  <script src="../js/api.js?v=3"></script>
+  <script src="../js/api.js?v=4"></script>
   <script src="../js/geo.js?v=3"></script>
   <script src="../js/camera.js?v=3"></script>
   <script src="../js/sync.js?v=3"></script>
+  <script src="../js/notificaciones.js?v=2"></script>
   <script>
     requiereAuth();
     if (!esAdmin()) {
@@ -126,6 +129,9 @@
     initIndexedDB().then(actualizarBadgePendientes).catch(console.error);
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(console.error);
     inicializarCampoFoto('foto-censo', 'foto-preview', 'foto-info');
+
+    // Inicializar botón de notificaciones push
+    navigator.serviceWorker.ready.then(() => initNotificaciones('notif-btn-container')).catch(console.warn);
 
     // Mostrar config del proyecto
     const cfg = getProyectoConfig();

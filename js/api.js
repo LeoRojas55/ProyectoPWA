@@ -196,14 +196,14 @@ async function obtenerCensos() {
 
 // ═══ PUSH NOTIFICATIONS ══════════════════════════════════════════════════════
 async function suscribirPush(suscripcion) {
-  return apiFetch('/censos/suscribir', {
+  return apiFetch('/push/subscriptions', {
     method: 'POST',
     body:   JSON.stringify(suscripcion),
   });
 }
 
 async function obtenerVapidPublicKey() {
-  const data = await apiFetch('/vapid-public-key');
+  const data = await apiFetch('/push/key');
   return data.publicKey;
 }
 
