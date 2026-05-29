@@ -45,38 +45,55 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Scripts JS siempre por red para evitar caché de versiones viejas
-  if (url.pathname.endsWith('.js')) {
-    event.respondWith(fetch(event.request.clone()));
-    return;
-  }
+  // No interferir con recursos de otros orígenes
+  if (url.origin !== self.location.origin) return;
 
-  // Peticiones a la API: intentar red, si falla retornar error offline
-  if (url.pathname.includes('/api/')) {
+  // Peticiones API GET: intentar red, si falla intentar caché o devolver mensaje offline
+  if (url.pathname.includes('/api/') && event.request.method === 'GET') {
     event.respondWith(
-      fetch(event.request.clone()).catch(() => {
-        return new Response(
-          JSON.stringify({ error: 'Sin conexión. Datos guardados localmente.' }),
-          { status: 503, headers: { 'Content-Type': 'application/json' } }
-        );
-      })
+      fetch(event.request.clone())
+        .then((response) => {
+          if (response && response.ok) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+            return response;
+          }
+          throw new Error('Respuesta no válida');
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return new Response(
+            JSON.stringify({ error: 'Sin conexión. Datos guardados localmente.' }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } }
+          );
+        })
     );
     return;
   }
 
-  // Assets estáticos: Cache-first
-  event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => caches.match('./index.html'));
-    })
-  );
+  // Recursos estáticos: servir desde caché primero, luego red
+  const shouldCache = ['.html', '.js', '.css', '.json', '.png', '.jpg', '.jpeg', '.svg', '.webp', '.woff2', '.woff'].some(ext => url.pathname.endsWith(ext));
+  if (shouldCache) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
+          }
+          return response;
+        }).catch(() => {
+          if (event.request.destination === 'document' || url.pathname.endsWith('.html')) {
+            return caches.match('./index.html');
+          }
+          return new Response('Sin conexión', { status: 503, statusText: 'Offline' });
+        });
+      })
+    );
+    return;
+  }
 });
 
 // ── PUSH: recibir notificaciones push ────────────────────────────────────────
