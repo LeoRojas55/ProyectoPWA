@@ -190,8 +190,12 @@
 
       if (navigator.onLine) {
         try {
-          await crearMascota(datos);
-          mostrarAlerta('Mascota registrada correctamente', 'success');
+          const resultado = await crearMascota(datos);
+          if (resultado?.pendiente) {
+            mostrarAlerta('Sin conexión — Mascota guardada localmente y pendiente de sincronización', 'warning');
+          } else {
+            mostrarAlerta('Mascota registrada correctamente', 'success');
+          }
           e.target.reset();
           cargarMascotas();
         } catch (err) {

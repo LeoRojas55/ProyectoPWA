@@ -97,12 +97,16 @@
         </div>
         <button type="button" class="btn btn-secondary" id="btn-ubicacion" style="margin-bottom:1.25rem">
           <i class="fa-solid fa-location-dot"></i> Obtener ubicación GPS
+        </button>
 
         <div id="info-proyecto" class="alert alert-info" style="margin-bottom:1.25rem"></div>
 
         <button type="submit" class="btn btn-primary btn-full" id="btn-censo">
           Registrar censo
         </button>
+        <div style="margin-top:0.75rem;text-align:center">
+          <span id="badge-pendientes" class="badge badge-offline" style="display:none"></span>
+        </div>
       </form>
     </div>
   </div>
@@ -119,6 +123,7 @@
     }
     mostrarUsuarioNavbar();
     inicializarMonitorRed();
+    initIndexedDB().then(actualizarBadgePendientes).catch(console.error);
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(console.error);
     inicializarCampoFoto('foto-censo', 'foto-preview', 'foto-info');
 
@@ -201,8 +206,12 @@
 
       if (navigator.onLine) {
         try {
-          await crearCenso(datos);
-          mostrarAlerta('Censo registrado correctamente. El mapa se ha actualizado.', 'success');
+          const resultado = await crearCenso(datos);
+          if (resultado?.pendiente) {
+            mostrarAlerta('Sin conexión — Censo guardado localmente y pendiente de sincronización', 'warning');
+          } else {
+            mostrarAlerta('Censo registrado correctamente. El mapa se ha actualizado.', 'success');
+          }
           e.target.reset();
           delete fotoInput.dataset.base64;
           document.getElementById('foto-preview').classList.remove('visible');

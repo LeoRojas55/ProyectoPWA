@@ -168,8 +168,12 @@
 
       if (navigator.onLine) {
         try {
-          await crearPersona(datos);
-          mostrarAlerta('Persona registrada correctamente', 'success');
+          const resultado = await crearPersona(datos);
+          if (resultado?.pendiente) {
+            mostrarAlerta('Sin conexión — Persona guardada localmente y pendiente de sincronización', 'warning');
+          } else {
+            mostrarAlerta('Persona registrada correctamente', 'success');
+          }
           e.target.reset();
           cargarPersonas();
         } catch (err) {

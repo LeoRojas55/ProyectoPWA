@@ -19,6 +19,12 @@ if (!window.__API_LOADED__) {
 
 const CACHE_STORES = window.CACHE_STORES;
 
+function esErrorConexion(err) {
+  return err?.message?.includes('Error de conexión') ||
+         err?.message?.includes('Failed to fetch') ||
+         err?.message?.includes('NetworkError');
+}
+
 async function obtenerCacheOffline(cacheStore, pendingStore) {
   if (typeof window?.leerCache !== 'function') return [];
   const cache = await window.leerCache(cacheStore).catch(() => []);
@@ -79,12 +85,22 @@ async function apiFetch(endpoint, options = {}) {
 
 // ═══ PERSONAS ════════════════════════════════════════════════════════════════
 async function crearPersona(datos) {
-  // Endpoint de registro del backend espera el objeto de persona sin id generado por el cliente
   const { id, ...payload } = datos || {};
-  return apiFetch('/personas/registro', {
-    method: 'POST',
-    body:   JSON.stringify(payload),
-  });
+  try {
+    return await apiFetch('/personas/registro', {
+      method: 'POST',
+      body:   JSON.stringify(payload),
+    });
+  } catch (err) {
+    if (esErrorConexion(err) && typeof window?.guardarEnCola === 'function') {
+      await window.guardarEnCola(window.STORES?.PERSONAS || 'personas_pendientes', datos);
+      if (typeof window?.actualizarBadgePendientes === 'function') {
+        window.actualizarBadgePendientes();
+      }
+      return { ...datos, pendiente: true };
+    }
+    throw err;
+  }
 }
 
 async function obtenerPersonas(rol = '') {
@@ -103,17 +119,26 @@ async function obtenerPersonas(rol = '') {
 
 // ═══ MASCOTAS ════════════════════════════════════════════════════════════════
 async function crearMascota(datos) {
-  // No enviar la propiedad `id` al backend (el servidor la genera).
-  // Filtrar campos undefined/null para enviar solo lo necesario.
   const { id, ...payload } = datos || {};
   const payloadLimpio = Object.fromEntries(
     Object.entries(payload).filter(([_, v]) => v !== undefined && v !== null)
   );
   console.log('[API] crearMascota payload:', payloadLimpio);
-  return apiFetch('/mascotas', {
-    method: 'POST',
-    body:   JSON.stringify(payloadLimpio),
-  });
+  try {
+    return await apiFetch('/mascotas', {
+      method: 'POST',
+      body:   JSON.stringify(payloadLimpio),
+    });
+  } catch (err) {
+    if (esErrorConexion(err) && typeof window?.guardarEnCola === 'function') {
+      await window.guardarEnCola(window.STORES?.MASCOTAS || 'mascotas_pendientes', datos);
+      if (typeof window?.actualizarBadgePendientes === 'function') {
+        window.actualizarBadgePendientes();
+      }
+      return { ...datos, pendiente: true };
+    }
+    throw err;
+  }
 }
 
 async function obtenerMascotas() {
@@ -131,17 +156,29 @@ async function obtenerMascotas() {
 
 // ═══ CENSOS ══════════════════════════════════════════════════════════════════
 async function crearCenso(datos) {
-  // No enviar `id` generado localmente; incluir idProyecto y color según la configuración del proyecto.
   const config = getProyectoConfig();
   const { id, ...payload } = datos || {};
-  return apiFetch('/censos', {
-    method: 'POST',
-    body:   JSON.stringify({
-      idProyecto: config.idProyecto,
-      color:      config.color,
-      ...payload,
-    }),
+  const body = JSON.stringify({
+    idProyecto: config.idProyecto,
+    color:      config.color,
+    ...payload,
   });
+
+  try {
+    return await apiFetch('/censos', {
+      method: 'POST',
+      body,
+    });
+  } catch (err) {
+    if (esErrorConexion(err) && typeof window?.guardarEnCola === 'function') {
+      await window.guardarEnCola(window.STORES?.CENSOS || 'censos_pendientes', datos);
+      if (typeof window?.actualizarBadgePendientes === 'function') {
+        window.actualizarBadgePendientes();
+      }
+      return { ...datos, pendiente: true };
+    }
+    throw err;
+  }
 }
 
 async function obtenerCensos() {

@@ -265,6 +265,7 @@ function mostrarAlerta(mensaje, tipo = 'info', duracion = 4000) {
     // Exponer API pública mínima
     window.initIndexedDB = initIndexedDB;
     window.inicializarMonitorRed = inicializarMonitorRed;
+    window.comprobarConexionRemote = comprobarConexionRemote;
     window.guardarEnCola = guardarEnCola;
     window.leerPendientes = leerPendientes;
     window.leerCache = leerCache;

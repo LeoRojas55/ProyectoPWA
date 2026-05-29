@@ -167,8 +167,12 @@
 
       if (navigator.onLine) {
         try {
-          await crearPersona(datos);
-          mostrarAlerta('Dueño registrado correctamente', 'success');
+          const resultado = await crearPersona(datos);
+          if (resultado?.pendiente) {
+            mostrarAlerta('Sin conexión — Dueño guardado localmente y pendiente de sincronización', 'warning');
+          } else {
+            mostrarAlerta('Dueño registrado correctamente', 'success');
+          }
           e.target.reset();
           cargarPersonas();
         } catch (err) {
