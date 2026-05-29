@@ -86,8 +86,9 @@
   </div>
 
   <script src="../js/auth.js?v=3"></script>
-  <script src="../js/api.js?v=3"></script>
+  <script src="../js/api.js?v=4"></script>
   <script src="../js/sync.js?v=3"></script>
+  <script src="../js/notificaciones.js?v=2"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     requiereAuth();
@@ -119,6 +120,10 @@
       marcadores.forEach(m => map.removeLayer(m));
       marcadores = [];
 
+      // Si venimos desde una notificación push, resaltar ese censo
+      const params  = new URLSearchParams(location.search);
+      const censoIdDestino = params.get('censoId');
+
       try {
         const censos = await obtenerCensos();
         document.getElementById('mapa-contador').textContent =
@@ -127,19 +132,32 @@
         if (censos.length === 0) return;
 
         const bounds = [];
+        let marcadorDestino = null;
+        let censoDestino    = null;
+
         censos.forEach(censo => {
           const lat = parseFloat(censo.lat), lon = parseFloat(censo.lon);
           const color = censo.color || '#6366f1';
+          const esDestino = censoIdDestino && (String(censo.id) === censoIdDestino || String(censo._id) === censoIdDestino);
           const marker = L.marker([lat, lon], { icon: crearIcono(color) });
           marker.bindPopup(`<strong>${censo.mascota?.nombre || 'Mascota'}</strong><br><span style="color:#94a3b8;font-size:0.8rem">${censo.mascota?.tipo || ''}</span>`);
           marker.on('click', () => mostrarInfoPanel(censo));
           marker.addTo(map);
           marcadores.push(marker);
           bounds.push([lat, lon]);
+          if (esDestino) { marcadorDestino = marker; censoDestino = censo; }
         });
 
-        if (bounds.length === 1) map.setView(bounds[0], 16);
-        else map.fitBounds(bounds, { padding: [40, 40] });
+        // Si hay un censo destino (desde notificación), centrarlo y abrirlo
+        if (marcadorDestino && censoDestino) {
+          map.setView([parseFloat(censoDestino.lat), parseFloat(censoDestino.lon)], 17);
+          marcadorDestino.openPopup();
+          mostrarInfoPanel(censoDestino);
+        } else if (bounds.length === 1) {
+          map.setView(bounds[0], 16);
+        } else {
+          map.fitBounds(bounds, { padding: [40, 40] });
+        }
 
       } catch (err) {
         document.getElementById('mapa-contador').textContent = 'Error cargando censos';
@@ -182,10 +200,14 @@
     async function actualizarEstadoPush() {
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
       try {
-        const sw = await navigator.serviceWorker.ready;
-        const subscription = await sw.pushManager.getSubscription();
-        if (subscription) {
-          document.getElementById('btn-push').innerHTML = '<i class="fa-solid fa-bell"></i> Alertas activas';
+        const sub = await getSuscripcionActiva();
+        const btn = document.getElementById('btn-push');
+        if (sub) {
+          btn.innerHTML   = '<i class="fa-solid fa-bell"></i> Alertas activas';
+          btn.dataset.activo = 'true';
+        } else {
+          btn.innerHTML   = '<i class="fa-solid fa-bell-slash"></i> Activar alertas';
+          btn.dataset.activo = 'false';
         }
       } catch (err) {
         console.warn('No se pudo comprobar el estado de push:', err);
@@ -193,21 +215,33 @@
     }
 
     document.getElementById('btn-push').addEventListener('click', async () => {
-      if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones'); return; }
-      const permiso = await Notification.requestPermission();
-      if (permiso !== 'granted') { mostrarAlerta('Permiso denegado', 'warning'); return; }
+      const btn = document.getElementById('btn-push');
+      btn.disabled = true;
       try {
-        const vapidKey = await obtenerVapidPublicKey();
-        if (!vapidKey || vapidKey.startsWith('REEMPLAZA')) {
-          mostrarAlerta('Configura las VAPID keys en el .env del servidor', 'warning'); return;
+        if (btn.dataset.activo === 'true') {
+          // Desactivar
+          const sub = await getSuscripcionActiva();
+          if (sub) await sub.unsubscribe();
+          mostrarAlerta('Notificaciones desactivadas', 'info');
+        } else {
+          // Activar
+          if (!('Notification' in window)) { mostrarAlerta('Tu navegador no soporta notificaciones', 'warning'); return; }
+          const permiso = await Notification.requestPermission();
+          if (permiso !== 'granted') { mostrarAlerta('Permiso denegado', 'warning'); return; }
+          const vapidKey = await obtenerVapidPublicKey();
+          if (!vapidKey || vapidKey.startsWith('REEMPLAZA')) {
+            mostrarAlerta('Configura las VAPID keys en el .env del servidor', 'warning'); return;
+          }
+          const sw  = await navigator.serviceWorker.ready;
+          const sub = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidKey) });
+          await suscribirPush(sub.toJSON());
+          mostrarAlerta('¡Notificaciones activadas! Recibirás alertas de nuevos censos.', 'success');
         }
-        const sw  = await navigator.serviceWorker.ready;
-        const sub = await sw.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidKey) });
-        await suscribirPush(sub.toJSON());
-        document.getElementById('btn-push').innerHTML = '<i class="fa-solid fa-bell"></i> Alertas activas';
-        mostrarAlerta('Notificaciones push activadas', 'success');
       } catch (err) {
         mostrarAlerta('Error: ' + err.message, 'danger');
+      } finally {
+        btn.disabled = false;
+        await actualizarEstadoPush();
       }
     });
 

@@ -1,4 +1,4 @@
-const CACHE_NAME    = 'censo-mascotas-v2';
+const CACHE_NAME    = 'censo-mascotas-v4';
 const OFFLINE_QUEUE = 'offline-queue';
 
 const ASSETS_TO_CACHE = [
@@ -101,48 +101,72 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   console.log('[SW] Push recibido');
 
-  let data = {};
+  let payload = {};
   try {
-    data = event.data ? event.data.json() : {};
+    payload = event.data ? event.data.json() : {};
   } catch (e) {
-    data = { notification: { title: '¡Nuevo censo!', body: event.data?.text() || '' } };
+    payload = { titulo: '¡Nuevo censo!', cuerpo: event.data?.text() || '' };
   }
 
-  const notif = data.notification || {};
+  // Soporta tanto formato {titulo, cuerpo, url, censoId}  (propio)
+  // como formato {notification: {title, body, data}} (web-push genérico)
+  const notif  = payload.notification || {};
+  const titulo = payload.titulo  || notif.title  || '¡Nuevo censo registrado!';
+  const cuerpo = payload.cuerpo  || notif.body   || 'Se registró un nuevo censo de mascotas';
+  const icon   = payload.icon    || notif.icon   || 'assets/icons/icon-192x192.svg';
+  const badge  = payload.badge   || notif.badge  || 'assets/icons/icon-72x72.svg';
+
+  // Construir URL destino: preferir la que viene en el payload
+  const censoId   = payload.censoId || notif.data?.censoId || '';
+  const urlDestino = payload.url || notif.data?.url
+    || (censoId ? `pages/mapa.html?censoId=${censoId}` : 'pages/mapa.html');
 
   event.waitUntil(
+    self.registration.showNotification(titulo, {
+      body:    cuerpo,
+      icon,
+      badge,
     self.registration.showNotification(notif.title || 'Censo de Mascotas', {
       body:    notif.body   || 'Se registró un nuevo censo',
       icon:    notif.icon   || 'assets/icons/app-icon.png',
       badge:   notif.badge  || 'assets/icons/icon-72.png',
       vibrate: [200, 100, 200],
-      data:    notif.data   || { url: 'pages/censo.html' },
+      data:    { url: urlDestino, censoId },
       actions: [
-        { action: 'ver-mapa', title: 'Ver en mapa' },
-        { action: 'cerrar',   title: 'Cerrar' },
+        { action: 'ver',    title: 'Ver censo' },
+        { action: 'cerrar', title: 'Cerrar'    },
       ],
     })
   );
 });
 
-// ── NOTIFICATION CLICK: redirigir al mapa ───────────────────────────────────
+// ── NOTIFICATION CLICK: abrir/navegar a la info del censo ───────────────────
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   if (event.action === 'cerrar') return;
 
-  const notificationUrl = event.notification.data?.url || 'pages/censo.html';
-  const url = new URL(notificationUrl, self.registration.scope).href;
+  // Extraer censoId del payload (si viene del backend al crear el censo)
+  const censoId = event.notification.data?.censoId || '';
+
+  // Construir URL SIEMPRE desde el scope del SW para que funcione en
+  // localhost, producción o cualquier subdominio sin cambiar nada.
+  const base    = self.registration.scope;           // ej: http://localhost:8080/
+  const destino = censoId
+    ? `${base}pages/mapa.html?censoId=${censoId}`
+    : `${base}pages/mapa.html`;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Si ya hay una pestaña de la PWA abierta → navegar dentro de ella
       for (const client of clientList) {
-        if (client.url.includes(self.location.origin) && 'focus' in client) {
-          client.navigate(url);
+        if (client.url.startsWith(base) && 'navigate' in client) {
+          client.navigate(destino);
           return client.focus();
         }
       }
-      return clients.openWindow(url);
+      // Si no hay pestaña abierta → abrir una nueva
+      return clients.openWindow(destino);
     })
   );
 });
