@@ -51,7 +51,7 @@
   <div id="offline-bar"><i class="fa-solid fa-wifi-slash"></i> Sin conexión — Mostrando datos del caché</div>
 
   <nav class="navbar">
-    <a href="mapa.html" class="navbar-brand"><i class="fa-solid fa-paw"></i> <span>Censo</span>Mascotas</a>
+    <a href="mapa.html" class="navbar-brand"><i class="fa-solid fa-map-location-dot"></i></i> <span>Censo</span>Mascotas</a><i class="fa-solid fa-paw"></i>
     <ul class="navbar-nav">
       <li><a href="personas.html" class="nav-link">Personas</a></li>
       <li><a href="duenos.html" class="nav-link">Dueños</a></li>
@@ -154,7 +154,7 @@
       if (censo.fotografiaCenso) foto.src = censo.fotografiaCenso;
 
       document.getElementById('info-contenido').innerHTML = `
-        <div class="info-section-title"><i class="fa-solid fa-paw"></i> Mascota</div>
+        <div class="info-section-title"><i class="fa-solid fa-map-location-dot"></i><i class="fa-solid fa-paw"></i> Mascota</div>
         <div class="info-field"><strong>Nombre</strong>${m.nombre || '—'}</div>
         <div class="info-field"><strong>Tipo</strong>${m.tipo || '—'}</div>
         <div class="info-field"><strong>Género</strong>${m.genero || '—'}</div>
