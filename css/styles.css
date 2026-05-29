@@ -3,8 +3,7 @@
    Paleta azul glassmorphism
 ═══════════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
-
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
 :root {
 
   /* ── Paleta principal ───────────────────────── */
@@ -49,8 +48,8 @@
 
   --glass-blur: blur(18px);
 
-  --font-body: 'Plus Jakarta Sans', sans-serif;
-  --font-mono: 'Space Mono', monospace;
+--font-body: 'Manrope', sans-serif;
+--font-mono: 'IBM Plex Mono', monospace;
 }
 
 /* ───────────────────────────────────────────── */
