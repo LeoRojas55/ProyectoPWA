@@ -179,6 +179,19 @@
 
     map.on('click', cerrarPanel);
 
+    async function actualizarEstadoPush() {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      try {
+        const sw = await navigator.serviceWorker.ready;
+        const subscription = await sw.pushManager.getSubscription();
+        if (subscription) {
+          document.getElementById('btn-push').innerHTML = '<i class="fa-solid fa-bell"></i> Alertas activas';
+        }
+      } catch (err) {
+        console.warn('No se pudo comprobar el estado de push:', err);
+      }
+    }
+
     document.getElementById('btn-push').addEventListener('click', async () => {
       if (!('Notification' in window)) { alert('Tu navegador no soporta notificaciones'); return; }
       const permiso = await Notification.requestPermission();
@@ -199,6 +212,7 @@
     });
 
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('../sw.js').catch(console.error);
+    actualizarEstadoPush();
     cargarCensos();
   </script>
 </body>

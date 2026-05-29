@@ -35,8 +35,19 @@ if (window.__SYNC_LOADED__) {
 
     let db = null;
 
+    function generarIdUnico() {
+      return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    async function ensureDBReady() {
+      if (!db) {
+        await initIndexedDB();
+      }
+      return db;
+    }
+
 // ── Inicializar IndexedDB ────────────────────────────────────────────────────
-function initIndexedDB() {
+async function initIndexedDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -60,17 +71,26 @@ function initIndexedDB() {
 }
 
 // ── Guardar en cola offline ──────────────────────────────────────────────────
-function guardarEnCola(store, datos) {
+async function guardarEnCola(store, datos) {
+  await ensureDBReady();
+  if (!datos || typeof datos !== 'object') {
+    throw new Error('No se proporcionaron datos válidos para guardar en cola');
+  }
+  const registro = { ...datos };
+  if (!registro.id) {
+    registro.id = generarIdUnico();
+  }
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readwrite');
-    tx.objectStore(store).put({ ...datos, _guardadoEn: new Date().toISOString() });
+    tx.objectStore(store).put({ ...registro, _guardadoEn: new Date().toISOString() });
     tx.oncomplete = resolve;
     tx.onerror    = (e) => reject(e.target.error);
   });
 }
 
 // ── Leer todos los pendientes de un store ────────────────────────────────────
-function leerPendientes(store) {
+async function leerPendientes(store) {
+  await ensureDBReady();
   return new Promise((resolve, reject) => {
     const tx     = db.transaction(store, 'readonly');
     const req    = tx.objectStore(store).getAll();
@@ -80,7 +100,8 @@ function leerPendientes(store) {
 }
 
 // ── Guardar datos de cache para listado offline ─────────────────────────────
-function guardarCache(store, items) {
+async function guardarCache(store, items) {
+  await ensureDBReady();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readwrite');
     const objectStore = tx.objectStore(store);
@@ -94,7 +115,8 @@ function guardarCache(store, items) {
 }
 
 // ── Leer datos cacheados para listado offline ───────────────────────────────
-function leerCache(store) {
+async function leerCache(store) {
+  await ensureDBReady();
   return new Promise((resolve, reject) => {
     const tx  = db.transaction(store, 'readonly');
     const req = tx.objectStore(store).getAll();
@@ -104,7 +126,8 @@ function leerCache(store) {
 }
 
 // ── Eliminar un registro de la cola ─────────────────────────────────────────
-function eliminarDeCola(store, id) {
+async function eliminarDeCola(store, id) {
+  await ensureDBReady();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readwrite');
     tx.objectStore(store).delete(id);
@@ -115,6 +138,7 @@ function eliminarDeCola(store, id) {
 
 // ── Contar pendientes totales ────────────────────────────────────────────────
 async function contarPendientes() {
+  await ensureDBReady();
   let total = 0;
   for (const store of Object.values(STORES)) {
     const items = await leerPendientes(store);
@@ -126,6 +150,7 @@ async function contarPendientes() {
 // ── Sincronización completa cuando hay red ───────────────────────────────────
 async function sincronizarTodo() {
   if (!navigator.onLine) return { sincronizados: 0, errores: 0 };
+  await ensureDBReady();
 
   let sincronizados = 0;
   let errores       = 0;
@@ -221,19 +246,20 @@ function inicializarMonitorRed() {
       bar.classList.toggle('visible', !conectado);
     }
 
-    if (conectado && db) {
+    if (conectado) {
+      await ensureDBReady();
       sincronizarTodo().then(({ sincronizados }) => {
         if (sincronizados > 0) {
           mostrarAlerta(`${sincronizados} registro(s) sincronizados correctamente`, 'success');
         }
-      }).catch(() => {});
+      }).catch(console.error);
       if ('serviceWorker' in navigator && 'SyncManager' in window) {
-        navigator.serviceWorker.ready.then(sw => sw.sync.register('sync-censos'));
+        navigator.serviceWorker.ready.then(sw => sw.sync.register('sync-censos')).catch(console.warn);
       }
     }
   }
 
-  window.addEventListener('online',  actualizar);
+  window.addEventListener('online', actualizar);
   window.addEventListener('offline', actualizar);
   actualizar();
 }
@@ -241,7 +267,7 @@ function inicializarMonitorRed() {
 // ── Escuchar mensajes del Service Worker
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (e) => {
-    if (e.data?.tipo === 'SYNC_REQUIRED' && db) {   // ← mismo guard
+    if (e.data?.tipo === 'SYNC_REQUIRED' && db) {
       sincronizarTodo().catch(console.error);
     }
   });
