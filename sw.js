@@ -17,10 +17,6 @@ const ASSETS_TO_CACHE = [
   './pages/censo.html',
   './pages/mapa.html',
   './pages/registro.html',
-  './assets/icons/chuchu.jpeg',
-  './assets/icons/app-icon.png',
-  './assets/icons/icon-192.png',
-  './assets/icons/icon-72.png',
 ];
 
 // ── INSTALL: pre-cachear assets estáticos ───────────────────────────────────
@@ -126,10 +122,6 @@ self.addEventListener('push', (event) => {
       body:    cuerpo,
       icon,
       badge,
-    self.registration.showNotification(notif.title || 'Censo de Mascotas', {
-      body:    notif.body   || 'Se registró un nuevo censo',
-      icon:    notif.icon   || 'assets/icons/app-icon.png',
-      badge:   notif.badge  || 'assets/icons/icon-72.png',
       vibrate: [200, 100, 200],
       data:    { url: urlDestino, censoId },
       actions: [
