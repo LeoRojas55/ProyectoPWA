@@ -93,7 +93,7 @@
     requiereAuth();
     mostrarUsuarioNavbar();
     inicializarMonitorRed();
-    initIndexedDB();
+    initIndexedDB().then(cargarCensos).catch(console.error);
 
     // ── Mapa con Leaflet + OpenStreetMap (100% gratis, sin API key) ───────────
     const map = L.map('map', { center: [4.5709, -74.2973], zoom: 6 });

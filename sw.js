@@ -45,9 +45,6 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // No interferir con recursos de otros orígenes
-  if (url.origin !== self.location.origin) return;
-
   // Peticiones API GET: intentar red, si falla intentar caché o devolver mensaje offline
   if (url.pathname.includes('/api/') && event.request.method === 'GET') {
     event.respondWith(

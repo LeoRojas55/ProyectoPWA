@@ -19,6 +19,15 @@ if (!window.__API_LOADED__) {
 
 const CACHE_STORES = window.CACHE_STORES;
 
+async function obtenerCacheOffline(cacheStore, pendingStore) {
+  if (typeof window?.leerCache !== 'function') return [];
+  const cache = await window.leerCache(cacheStore).catch(() => []);
+  const pendientes = typeof window?.leerPendientes === 'function'
+    ? await window.leerPendientes(pendingStore).catch(() => [])
+    : [];
+  return [...cache, ...pendientes];
+}
+
 // ── Función base de fetch con JWT ────────────────────────────────────────────
 async function apiFetch(endpoint, options = {}) {
   const token = obtenerToken();
@@ -88,12 +97,7 @@ async function obtenerPersonas(rol = '') {
     return personas;
   } catch (err) {
     console.warn('[API] obtenerPersonas fallback offline:', err.message);
-    if (typeof leerCache === 'function') {
-      const cache = await leerCache(CACHE_STORES.PERSONAS);
-      const pendientes = await leerPendientes(STORES.PERSONAS).catch(() => []);
-      return [...cache, ...pendientes];
-    }
-    throw err;
+    return obtenerCacheOffline(CACHE_STORES.PERSONAS, window.STORES?.PERSONAS || 'personas_pendientes');
   }
 }
 
@@ -121,12 +125,7 @@ async function obtenerMascotas() {
     return mascotas;
   } catch (err) {
     console.warn('[API] obtenerMascotas fallback offline:', err.message);
-    if (typeof leerCache === 'function') {
-      const cache = await leerCache(CACHE_STORES.MASCOTAS);
-      const pendientes = await leerPendientes(STORES.MASCOTAS).catch(() => []);
-      return [...cache, ...pendientes];
-    }
-    throw err;
+    return obtenerCacheOffline(CACHE_STORES.MASCOTAS, window.STORES?.MASCOTAS || 'mascotas_pendientes');
   }
 }
 
@@ -154,12 +153,7 @@ async function obtenerCensos() {
     return censos;
   } catch (err) {
     console.warn('[API] obtenerCensos fallback offline:', err.message);
-    if (typeof leerCache === 'function') {
-      const cache = await leerCache(CACHE_STORES.CENSOS);
-      const pendientes = await leerPendientes(STORES.CENSOS).catch(() => []);
-      return [...cache, ...pendientes];
-    }
-    throw err;
+    return obtenerCacheOffline(CACHE_STORES.CENSOS, window.STORES?.CENSOS || 'censos_pendientes');
   }
 }
 

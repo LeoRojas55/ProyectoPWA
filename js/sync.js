@@ -30,6 +30,9 @@ if (window.__SYNC_LOADED__) {
     const STORES     = window.CENSO_DB_CONFIG.STORES;
     const CACHE_STORES = window.CENSO_DB_CONFIG.CACHE_STORES;
 
+    window.STORES = window.STORES || STORES;
+    window.CACHE_STORES = window.CACHE_STORES || CACHE_STORES;
+
     let db = null;
 
 // ── Inicializar IndexedDB ────────────────────────────────────────────────────
